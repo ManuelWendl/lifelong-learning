@@ -1,0 +1,17 @@
+defaults:
+  - mujoco_playground_base
+
+task_name: HumanoidBackup
+task_params:
+  ctrl_dt: 0.025
+  sim_dt: 0.005
+  # Finite horizon H for backup policy. At ctrl_dt=0.025 s, 200 steps = 5 s.
+  episode_length: 200
+  action_repeat: 1
+  vision: false
+  # Path to the .npz file produced by Stage 1 state collection.
+  # Override at runtime: environment.task_params.simulator_states_path=<path>
+  simulator_states_path: ""
+  # Set A thresholds for the upright condition.
+  head_height_threshold: 1.2
+  torso_upright_threshold: 0.9

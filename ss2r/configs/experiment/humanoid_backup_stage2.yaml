@@ -1,0 +1,32 @@
+# @package _global_
+# Stage 2: Train a backup (upright-recovery) policy.
+#
+# The environment initialises from the 1M simulator states collected in Stage 1.
+# Reward is sparse: 0 at every step, 1 on entering set A (upright) + termination.
+# With discounting=1.0, the optimal Q-function equals P(reach A within H steps),
+# i.e. the probability-of-recovery from any given state.
+defaults:
+  - mujoco_playground_dm_control
+  - override /environment: humanoid_backup
+  - _self_
+
+training:
+  num_timesteps: 2000000
+  safe: false
+  train_domain_randomization: false
+  eval_domain_randomization: false
+  store_checkpoint: true
+  num_evals: 20
+  episode_length: 200
+
+agent:
+  activation: swish
+  # No discounting so Q*(s) = P(reach A within H steps | start at s).
+  discounting: 1.0
+  # Low initial entropy weight: sparse reward can otherwise be dominated by
+  # the SAC entropy bonus. Tune down further if training is unstable.
+  init_alpha: 0.01
+  reward_scaling: 1.0
+  # Tighten the replay buffer to match the shorter episodes.
+  max_replay_size: 1000000
+  min_replay_size: 8192
