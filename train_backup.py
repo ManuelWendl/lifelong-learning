@@ -234,8 +234,6 @@ def _run_stage2(cfg, states_path: str, checkpoint_path: str, logger: TrainingLog
         policy_hidden_layer_sizes=tuple(s2.policy_hidden_layer_sizes),
         value_hidden_layer_sizes=tuple(s2.value_hidden_layer_sizes),
         activation=activation,
-        value_obs_key="state",
-        policy_obs_key="state",
     )
 
     steps = Counter()
