@@ -203,6 +203,7 @@ def train(
     entropy_bonus: bool = True,
     augment_pixels: bool = False,
     load_buffer: bool = False,
+    env_state_hook: Optional[Callable] = None,
 ):
     if min_replay_size >= num_timesteps:
         raise ValueError(
@@ -759,6 +760,8 @@ def train(
         ) = training_epoch_with_timing(
             training_state, env_state, buffer_state, epoch_key
         )
+        if env_state_hook is not None:
+            env_state_hook(env_state, training_state)
         if reset_on_eval:
             reset_keys = jax.random.split(epoch_key, num_envs)
             env_state = reset_fn(reset_keys)
