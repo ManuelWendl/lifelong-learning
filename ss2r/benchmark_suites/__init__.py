@@ -27,6 +27,7 @@ from ss2r.benchmark_suites.mujoco_playground.go2_joystick import (
 )
 from ss2r.benchmark_suites.mujoco_playground.humanoid import humanoid as dm_humanoid
 from ss2r.benchmark_suites.mujoco_playground.humanoid import (
+    backup_humanoid as backup_humanoid,  # registers HumanoidBackup
     nonepisodic_humanoid as nonepisodic_humanoid,
 )
 from ss2r.benchmark_suites.mujoco_playground.pick_cartesian import pick_cartesian
@@ -555,6 +556,7 @@ randomization_fns = {
     "NonEpisodicHumanoidWalk": dm_humanoid.domain_randomization,
     "NonEpisodicHumanoidRun": dm_humanoid.domain_randomization,
     "SafeHumanoidWalk": dm_humanoid.domain_randomization,
+    "HumanoidBackup": dm_humanoid.domain_randomization,
     "AlohaPegInsertionDistill": manipulation.get_domain_randomizer(
         "AlohaPegInsertionDistill"
     ),

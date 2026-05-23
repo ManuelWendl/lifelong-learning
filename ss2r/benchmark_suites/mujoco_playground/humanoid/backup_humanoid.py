@@ -89,6 +89,8 @@ class BackupHumanoidEnv(humanoid.Humanoid):
         info = {"rng": rng, "cost": jp.zeros(())}
         metrics = {
             "reward/in_upright_set": jp.zeros(()),
+            "reward": jp.zeros(()),
+            "cost": jp.zeros(()),
         }
         obs = self._get_obs(data, info)
         reward, done = jp.zeros(2)
@@ -112,10 +114,13 @@ class BackupHumanoidEnv(humanoid.Humanoid):
         nans = jp.isnan(data.qpos).any() | jp.isnan(data.qvel).any()
         done = (in_A | nans).astype(jp.float32)
 
+        cost = jp.zeros(())
         metrics = {
             "reward/in_upright_set": in_A.astype(jp.float32),
+            "reward": reward,
+            "cost": cost,
         }
-        info = {**state.info, "cost": jp.zeros(())}
+        info = {**state.info, "cost": cost}
         return mjx_env.State(data, obs, reward, done, metrics, info)
 
 

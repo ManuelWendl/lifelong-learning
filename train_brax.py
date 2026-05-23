@@ -4,6 +4,7 @@ from pathlib import Path
 
 import hydra
 import jax
+import jax.nn as jnn
 from brax import envs
 from omegaconf import OmegaConf
 
@@ -86,6 +87,48 @@ def get_train_fn(cfg):
     return train_fn
 
 
+def _maybe_make_state_collector_hook(cfg, train_env):
+    """Returns (hook_fn, collector_state) if backup state collection is configured, else (None, None)."""
+    backup_cfg = getattr(cfg, "backup", None)
+    if cfg.agent.name != "sac" or backup_cfg is None or not backup_cfg.get("states_save_path", ""):
+        return None, None
+
+    import ss2r.algorithms.sac.networks as sac_networks
+    from ss2r.common.simulator_states import EpochStateCollector
+
+    num_evals_after_init = max(cfg.training.num_evals - 1, 1)
+    collector_state = {"collector": None}
+
+    def hook(env_state, training_state):
+        if collector_state["collector"] is None:
+            activation = getattr(jnn, cfg.agent.activation)
+            policy_obs_key = "privileged_state" if cfg.training.get("policy_privileged", False) else "state"
+            make_policy_fn = sac_networks.make_inference_fn(
+                sac_networks.make_sac_networks(
+                    observation_size=train_env.observation_size,
+                    action_size=train_env.action_size,
+                    policy_hidden_layer_sizes=tuple(cfg.agent.policy_hidden_layer_sizes),
+                    value_hidden_layer_sizes=tuple(cfg.agent.value_hidden_layer_sizes),
+                    activation=activation,
+                    safe=False,
+                    use_bro=cfg.agent.use_bro,
+                    n_critics=cfg.agent.n_critics,
+                    policy_obs_key=policy_obs_key,
+                )
+            )
+            collector_state["collector"] = EpochStateCollector(
+                env=train_env,
+                make_policy_fn=make_policy_fn,
+                n_total_states=backup_cfg.n_states,
+                num_evals=num_evals_after_init,
+                num_envs=cfg.training.num_envs,
+                seed=cfg.training.seed,
+            )
+        collector_state["collector"].hook(env_state, training_state)
+
+    return hook, collector_state
+
+
 class Counter:
     def __init__(self):
         self.count = 0
@@ -119,12 +162,14 @@ def main(cfg):
             cfg.training.action_repeat,
             cfg.environment.task_params.vision_config.render_batch_size,
         )
+    hook, collector_state = _maybe_make_state_collector_hook(cfg, train_env)
     steps = Counter()
     with jax.disable_jit(not cfg.jit):
         make_policy, params, _ = train_fn(
             environment=train_env,
             eval_env=eval_env,
             progress_fn=functools.partial(report, logger, steps),
+            **({"env_state_hook": hook} if hook is not None else {}),
         )
         if cfg.training.render:
             rng = jax.random.split(
@@ -156,6 +201,12 @@ def main(cfg):
             artifacts = locate_last_checkpoint()
             if artifacts:
                 logger.log_artifact(artifacts, "model", "checkpoint")
+    if collector_state is not None and collector_state["collector"] is not None:
+        from ss2r.common.simulator_states import save_simulator_states
+        collector = collector_state["collector"]
+        qpos, qvel = collector.get_states(n_states=cfg.backup.n_states)
+        save_simulator_states(qpos, qvel, cfg.backup.states_save_path)
+        _LOG.info("Saved simulator states to %s", cfg.backup.states_save_path)
     _LOG.info("Done training.")
 
 

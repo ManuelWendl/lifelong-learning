@@ -1,19 +1,35 @@
 # @package _global_
-# Stage 2: Train a backup (upright-recovery) policy.
+# Stage 2: Train a backup (upright-recovery) policy with SPIDR pessimism.
 #
-# The environment initialises from the 1M simulator states collected in Stage 1.
+# The environment initialises from the states saved by Stage 1.
 # Reward is sparse: 0 at every step, 1 on entering set A (upright) + termination.
-# With discounting=1.0, the optimal Q-function equals P(reach A within H steps),
-# i.e. the probability-of-recovery from any given state.
+# With discounting=1.0, the optimal Q-function equals P(reach A within H steps).
+# SPIDR wraps the environment with domain randomization and subtracts a pessimism
+# penalty (lambda_ * std over perturbed models) from the Q-target, so the learned
+# Q* is a lower bound on recovery probability across the randomization distribution.
+#
+# Run:  python train_brax.py +experiment=humanoid_backup_stage2
 defaults:
   - mujoco_playground_dm_control
   - override /environment: humanoid_backup
+  - override /agent/propagation: spidr
   - _self_
+
+environment:
+  task_params:
+    simulator_states_path: outputs/humanoid_backup_states.npz
+  train_params:
+    friction: [-0.05, 0.05]
+    gear_hip:
+      x: [-20., 20.]
+      y: [-20., 20.]
+      z: [-60., 60.]
+    gear_knee: [-40., 40.]
 
 training:
   num_timesteps: 2000000
   safe: false
-  train_domain_randomization: false
+  train_domain_randomization: true
   eval_domain_randomization: false
   store_checkpoint: true
   num_evals: 20
@@ -21,12 +37,10 @@ training:
 
 agent:
   activation: swish
-  # No discounting so Q*(s) = P(reach A within H steps | start at s).
   discounting: 1.0
-  # Low initial entropy weight: sparse reward can otherwise be dominated by
-  # the SAC entropy bonus. Tune down further if training is unstable.
   init_alpha: 0.01
   reward_scaling: 1.0
-  # Tighten the replay buffer to match the shorter episodes.
   max_replay_size: 1000000
   min_replay_size: 8192
+  propagation:
+    lambda_: 1.

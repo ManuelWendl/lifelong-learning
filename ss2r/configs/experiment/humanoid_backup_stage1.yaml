@@ -1,8 +1,10 @@
 # @package _global_
 # Stage 1: Train a humanoid walk policy for 2M steps.
-# After training, the orchestration script (train_backup.py) rolls out the
-# trained policy to collect 1M MuJoCo simulator states (qpos, qvel) which
-# are used to initialise Stage 2.
+# During training, an EpochStateCollector hook captures (qpos, qvel) pairs from
+# every epoch, giving a diverse distribution (early stumbling through upright walking).
+# After training, states are saved to backup.states_save_path for Stage 2.
+#
+# Run:  python train_brax.py +experiment=humanoid_backup_stage1
 defaults:
   - mujoco_playground_dm_control
   - override /environment: humanoid_walk
@@ -21,36 +23,6 @@ agent:
   discounting: 0.99
   init_alpha: 1.0
 
-# --- Backup policy configuration (used by train_backup.py) ---
 backup:
-  # State collection from the walk policy.
   n_states: 1000000
   states_save_path: outputs/humanoid_backup_states.npz
-
-  # Stage 2: backup (upright-recovery) policy training hyperparameters.
-  # With discounting=1 and sparse reward {0,1}, Q*(s) = P(reach upright within H).
-  stage2:
-    num_timesteps: 2000000
-    episode_length: 200          # finite horizon H (200 × 0.025 s = 5 s)
-    num_evals: 20
-    # Environment thresholds defining set A.
-    head_height_threshold: 1.2
-    torso_upright_threshold: 0.9
-    # SAC hyperparameters for sparse / finite-horizon setting.
-    discounting: 1.0             # no discount → Q = probability of reaching A
-    init_alpha: 0.01             # low entropy weight for sparse reward
-    reward_scaling: 1.0
-    learning_rate: 3.0e-4
-    critic_learning_rate: 3.0e-4
-    alpha_learning_rate: 3.0e-4
-    batch_size: 256
-    min_replay_size: 8192
-    max_replay_size: 1000000
-    grad_updates_per_step: 512
-    normalize_observations: true
-    tau: 0.005
-    use_bro: true
-    n_critics: 2
-    policy_hidden_layer_sizes: [256, 256, 256]
-    value_hidden_layer_sizes: [512, 512]
-    store_checkpoint: true
