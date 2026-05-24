@@ -16,9 +16,8 @@ defaults:
   - _self_
 
 backup:
-  # W&B run ID from Stage 1. If set, the simulator states artifact is downloaded
-  # automatically and simulator_states_path is ignored.
-  states_wandb_run_id: null
+  # W&B run ID from Stage 1. 
+  states_wandb_run_id: zfsniq3a
 
 environment:
   task_params:
