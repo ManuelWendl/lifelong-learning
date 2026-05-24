@@ -10,5 +10,5 @@ task_params:
   action_repeat: 1
   vision: false
   # Set A thresholds for the upright condition.
-  head_height_threshold: 1.5
+  head_height_threshold: 1.4
   torso_upright_threshold: 0.9
