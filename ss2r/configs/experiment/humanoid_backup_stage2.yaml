@@ -47,7 +47,7 @@ agent:
   reward_scaling: 1.0
   max_replay_size: 1000000
   min_replay_size: 50000
-  learning_rate: 1e-5
+  learning_rate: 1e-9
   num_critic_updates_per_actor_update: 20
   propagation:
     lambda_: .1
