@@ -238,8 +238,12 @@ class LCBReward(QTransformation):
         next_v -= alpha * next_log_prob
         disagreement = transitions.extras["state_extras"]["disagreement"]
         reward = transitions.reward - disagreement
+        truncation = transitions.extras["state_extras"].get(
+            "truncation", jnp.zeros_like(transitions.discount)
+        )
+        discount = transitions.discount + truncation * gamma
         target_q = jax.lax.stop_gradient(
-            reward * scale + transitions.discount * gamma * next_v
+            reward * scale + discount * next_v
         )
         return target_q
 
