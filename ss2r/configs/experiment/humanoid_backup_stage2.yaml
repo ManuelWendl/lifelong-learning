@@ -49,5 +49,10 @@ agent:
   min_replay_size: 50000
   learning_rate: 1e-9
   num_critic_updates_per_actor_update: 20
+  # Disable entropy regularisation: the loaded walk policy outputs concentrated
+  # distributions for OOD fallen-state observations, causing log_prob >> 0.
+  # alpha_loss = alpha*(-log_prob - target_entropy) < 0 → alpha grows without
+  # bound → next_v -= alpha*log_prob explodes with gamma=1.0.
+  entropy_bonus: false
   propagation:
     lambda_: .1
