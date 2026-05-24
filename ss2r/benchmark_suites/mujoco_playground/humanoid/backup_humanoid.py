@@ -34,8 +34,8 @@ def default_config() -> config_dict.ConfigDict:
         # Path to the .npz file written by save_simulator_states().
         simulator_states_path="",
         # Set A thresholds: must satisfy BOTH conditions to terminate with reward 1.
-        head_height_threshold=1.2,   # matches humanoid._STAND_HEIGHT
-        torso_upright_threshold=0.9,  # z-projection of torso orientation
+        head_height_threshold=1.4,   # matches humanoid._STAND_HEIGHT (half-crouch is ~1.2)
+        torso_upright_threshold=0.98,  # z-projection of torso orientation (~18° max lean, was 0.9/~26°)
     )
 
 
