@@ -157,16 +157,14 @@ class SACBase(QTransformation):
         else:
             next_v = next_q.min(axis=-1)
         next_v -= alpha * next_log_prob
-        truncation = transitions.extras["state_extras"].get(
-            "truncation", jnp.zeros_like(transitions.discount)
-        )
-        # transitions.discount = 1 - done, which is 0 for both true terminals and
-        # time-limit truncations (CostEpisodeWrapper sets done=1 in both cases so
-        # that AutoResetWrapper can trigger). Adding truncation restores the
-        # bootstrap for time-outs while keeping discount=0 for true terminals.
-        discount = (transitions.discount + truncation) * gamma
+        # Use transitions.discount (= 1 - done) directly. done=1 for both true
+        # terminals (reached set A) and time-limit truncations, so both get
+        # discount=0 and no bootstrap. This is intentional: with SPIDR the
+        # pessimism penalty lambda_*std accumulates at every bootstrap step, so
+        # bootstrapping through the truncation boundary causes it to diverge.
+        # Treating the horizon as a true terminal bounds Q within [0, H].
         target_q = jax.lax.stop_gradient(
-            transitions.reward * scale + discount * next_v
+            transitions.reward * scale + transitions.discount * gamma * next_v
         )
         return target_q
 
