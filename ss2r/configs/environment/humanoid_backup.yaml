@@ -13,5 +13,5 @@ task_params:
   # Override at runtime: environment.task_params.simulator_states_path=<path>
   simulator_states_path: ""
   # Set A thresholds for the upright condition.
-  head_height_threshold: 1.2
-  torso_upright_threshold: 0.9
+  head_height_threshold: 1.6
+  torso_upright_threshold: 0.95
