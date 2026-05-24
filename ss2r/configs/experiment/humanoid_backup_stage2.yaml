@@ -31,7 +31,7 @@ environment:
     gear_knee: [-40., 40.]
 
 training:
-  num_timesteps: 2000000
+  num_timesteps: 5000000
   safe: false
   train_domain_randomization: true
   eval_domain_randomization: false

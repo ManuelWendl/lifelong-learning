@@ -622,6 +622,7 @@ render_fns = {
     "NonEpisodicHumanoidWalk": mujoco_playground.render,
     "NonEpisodicHumanoidRun": mujoco_playground.render,
     "SafeHumanoidWalk": mujoco_playground.render,
+    "HumanoidBackup": mujoco_playground.render,
     "AlohaSinglePegInsertion": mujoco_playground.render,
     "AlohaPegInsertionDistill": mujoco_playground.render,
     "PandaPickCubeCartesian": functools.partial(
