@@ -15,9 +15,14 @@ defaults:
   - override /agent/propagation: spidr
   - _self_
 
+backup:
+  # W&B run ID from Stage 1. If set, the simulator states artifact is downloaded
+  # automatically and simulator_states_path is ignored.
+  states_wandb_run_id: null
+
 environment:
   task_params:
-    simulator_states_path: outputs/humanoid_backup_states.npz
+    simulator_states_path: ""
   train_params:
     friction: [-0.05, 0.05]
     gear_hip:

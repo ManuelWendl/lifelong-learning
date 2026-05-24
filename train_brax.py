@@ -51,6 +51,22 @@ def _validate_madrona_args(
         )
 
 
+def _resolve_simulator_states_path(cfg):
+    """If backup.states_wandb_run_id is set, download the artifact and patch the config."""
+    backup_cfg = getattr(cfg, "backup", None)
+    if backup_cfg is None:
+        return
+    run_id = backup_cfg.get("states_wandb_run_id", None)
+    if run_id:
+        from omegaconf import OmegaConf
+
+        from ss2r.common.wandb import get_simulator_states
+
+        local_path = get_simulator_states(run_id, cfg.wandb.entity)
+        OmegaConf.update(cfg, "environment.task_params.simulator_states_path", local_path)
+        _LOG.info("Downloaded simulator states from W&B run %s to %s", run_id, local_path)
+
+
 def get_train_fn(cfg):
     if cfg.training.wandb_id:
         restore_checkpoint_path = get_wandb_checkpoint(
@@ -147,6 +163,7 @@ def main(cfg):
         f"\n{OmegaConf.to_yaml(cfg)}"
     )
     logger = TrainingLogger(cfg)
+    _resolve_simulator_states_path(cfg)
     train_fn = get_train_fn(cfg)
     train_env_wrap_fn, eval_env_wrap_fn = benchmark_suites.get_wrap_env_fn(cfg)
     use_vision = "use_vision" in cfg.agent and cfg.agent.use_vision
@@ -206,7 +223,12 @@ def main(cfg):
         collector = collector_state["collector"]
         qpos, qvel = collector.get_states(n_states=cfg.backup.n_states)
         save_simulator_states(qpos, qvel, cfg.backup.states_save_path)
-        _LOG.info("Saved simulator states to %s", cfg.backup.states_save_path)
+        logger.log_artifact(
+            cfg.backup.states_save_path,
+            type="simulator_states",
+            name="simulator_states",
+        )
+        _LOG.info("Saved and uploaded simulator states from %s", cfg.backup.states_save_path)
     _LOG.info("Done training.")
 
 
