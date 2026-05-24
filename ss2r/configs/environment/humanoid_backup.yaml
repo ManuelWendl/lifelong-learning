@@ -9,9 +9,6 @@ task_params:
   episode_length: 200
   action_repeat: 1
   vision: false
-  # Path to the .npz file produced by Stage 1 state collection.
-  # Override at runtime: environment.task_params.simulator_states_path=<path>
-  simulator_states_path: ""
   # Set A thresholds for the upright condition.
-  head_height_threshold: 1.6
-  torso_upright_threshold: 0.95
+  head_height_threshold: 1.5
+  torso_upright_threshold: 0.9
