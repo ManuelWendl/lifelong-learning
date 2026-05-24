@@ -2,7 +2,7 @@
 # Stage 1: Train a humanoid walk policy for 2M steps.
 # During training, an EpochStateCollector hook captures (qpos, qvel) pairs from
 # every epoch, giving a diverse distribution (early stumbling through upright walking).
-# After training, states are saved to backup.states_save_path for Stage 2.
+# After training, states are uploaded to W&B as a simulator_states artifact.
 #
 # Run:  python train_brax.py +experiment=humanoid_backup_stage1
 defaults:
@@ -25,4 +25,3 @@ agent:
 
 backup:
   n_states: 1000000
-  states_save_path: outputs/humanoid_backup_states.npz

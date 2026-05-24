@@ -184,6 +184,7 @@ def train(
     progress_fn: Callable[[int, Metrics], None] = lambda *args: None,
     checkpoint_logdir: Optional[str] = None,
     restore_checkpoint_path: Optional[str] = None,
+    restore_policy_only: bool = False,
     eval_env: Optional[envs.Env] = None,
     safe: bool = False,
     safety_budget: float = float("inf"),
@@ -336,32 +337,39 @@ def train(
         policy_optimizer_state = update_lr_schedule_count(
             restore_state(params[6], training_state.policy_optimizer_state), 0
         )
-        alpha_optimizer_state = restore_state(
-            params[7], training_state.alpha_optimizer_state
-        )
-        qr_optimizer_state = update_lr_schedule_count(
-            restore_state(params[8], training_state.qr_optimizer_state), 0
-        )
-        if qc_optimizer is None:
-            qc_optimizer_state = None
-        else:
-            qc_optimizer_state = update_lr_schedule_count(
-                restore_state(params[9], training_state.qc_optimizer_state), 0
+        if restore_policy_only:
+            training_state = training_state.replace(  # type: ignore
+                normalizer_params=params[0],
+                policy_params=params[1],
+                policy_optimizer_state=policy_optimizer_state,
             )
-        training_state = training_state.replace(  # type: ignore
-            normalizer_params=params[0],
-            policy_params=params[1],
-            penalizer_params=restore_state(params[2], training_state.penalizer_params),
-            qr_params=params[3],
-            target_qr_params=params[3],
-            qc_params=params[4],
-            target_qc_params=params[4],
-            alpha_params=params[5],
-            policy_optimizer_state=policy_optimizer_state,
-            alpha_optimizer_state=alpha_optimizer_state,
-            qr_optimizer_state=qr_optimizer_state,
-            qc_optimizer_state=qc_optimizer_state,
-        )
+        else:
+            alpha_optimizer_state = restore_state(
+                params[7], training_state.alpha_optimizer_state
+            )
+            qr_optimizer_state = update_lr_schedule_count(
+                restore_state(params[8], training_state.qr_optimizer_state), 0
+            )
+            if qc_optimizer is None:
+                qc_optimizer_state = None
+            else:
+                qc_optimizer_state = update_lr_schedule_count(
+                    restore_state(params[9], training_state.qc_optimizer_state), 0
+                )
+            training_state = training_state.replace(  # type: ignore
+                normalizer_params=params[0],
+                policy_params=params[1],
+                penalizer_params=restore_state(params[2], training_state.penalizer_params),
+                qr_params=params[3],
+                target_qr_params=params[3],
+                qc_params=params[4],
+                target_qc_params=params[4],
+                alpha_params=params[5],
+                policy_optimizer_state=policy_optimizer_state,
+                alpha_optimizer_state=alpha_optimizer_state,
+                qr_optimizer_state=qr_optimizer_state,
+                qc_optimizer_state=qc_optimizer_state,
+            )
     replay_buffer = replay_buffer_factory(  # type: ignore
         max_replay_size=max_replay_size,
         dummy_data_sample=dummy_transition,

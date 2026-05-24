@@ -38,6 +38,8 @@ training:
   store_checkpoint: true
   num_evals: 20
   episode_length: 200
+  wandb_id: ${backup.states_wandb_run_id}
+  restore_policy_only: true
 
 agent:
   activation: swish

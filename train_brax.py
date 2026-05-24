@@ -106,7 +106,7 @@ def get_train_fn(cfg):
 def _maybe_make_state_collector_hook(cfg, train_env):
     """Returns (hook_fn, collector_state) if backup state collection is configured, else (None, None)."""
     backup_cfg = getattr(cfg, "backup", None)
-    if cfg.agent.name != "sac" or backup_cfg is None or not backup_cfg.get("states_save_path", ""):
+    if cfg.agent.name != "sac" or backup_cfg is None or not backup_cfg.get("n_states", 0):
         return None, None
 
     import ss2r.algorithms.sac.networks as sac_networks
@@ -222,13 +222,10 @@ def main(cfg):
         from ss2r.common.simulator_states import save_simulator_states
         collector = collector_state["collector"]
         qpos, qvel = collector.get_states(n_states=cfg.backup.n_states)
-        save_simulator_states(qpos, qvel, cfg.backup.states_save_path)
-        logger.log_artifact(
-            cfg.backup.states_save_path,
-            type="simulator_states",
-            name="simulator_states",
-        )
-        _LOG.info("Saved and uploaded simulator states from %s", cfg.backup.states_save_path)
+        states_path = "simulator_states.npz"
+        save_simulator_states(qpos, qvel, states_path)
+        logger.log_artifact(states_path, type="simulator_states", name="simulator_states")
+        _LOG.info("Uploaded simulator states to W&B")
     _LOG.info("Done training.")
 
 

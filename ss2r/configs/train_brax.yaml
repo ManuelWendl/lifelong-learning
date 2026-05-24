@@ -51,6 +51,7 @@ training:
   eval_domain_randomization: true
   store_checkpoint: true
   wandb_id: null
+  restore_policy_only: false
   hard_resets: false
   nonepisodic: false
   action_delay:
