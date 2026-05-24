@@ -157,8 +157,16 @@ class SACBase(QTransformation):
         else:
             next_v = next_q.min(axis=-1)
         next_v -= alpha * next_log_prob
+        truncation = transitions.extras["state_extras"].get(
+            "truncation", jnp.zeros_like(transitions.discount)
+        )
+        # transitions.discount = 1 - done, which is 0 for both true terminals and
+        # time-limit truncations (CostEpisodeWrapper sets done=1 in both cases so
+        # that AutoResetWrapper can trigger). Adding truncation restores the
+        # bootstrap for time-outs while keeping discount=0 for true terminals.
+        discount = (transitions.discount + truncation) * gamma
         target_q = jax.lax.stop_gradient(
-            transitions.reward * scale + transitions.discount * gamma * next_v
+            transitions.reward * scale + discount * next_v
         )
         return target_q
 
@@ -241,10 +249,12 @@ class LCBReward(QTransformation):
         truncation = transitions.extras["state_extras"].get(
             "truncation", jnp.zeros_like(transitions.discount)
         )
-        discount = transitions.discount + truncation * gamma
-        target_q = jax.lax.stop_gradient(
-            reward * scale + discount * next_v
-        )
+        # transitions.discount = 1 - done, which is 0 for both true terminals and
+        # time-limit truncations (CostEpisodeWrapper sets done=1 in both cases so
+        # that AutoResetWrapper can trigger). Adding truncation*gamma restores the
+        # bootstrap for time-outs while keeping discount=0 for true terminals.
+        discount = (transitions.discount + truncation) * gamma
+        target_q = jax.lax.stop_gradient(reward * scale + discount * next_v)
         return target_q
 
 
