@@ -408,6 +408,12 @@ def train(
                 params[3] if safety_filter == "nonepisodic"
                 else (params[10] if safe and len(params) > 10 else (params[4] if safe else None))
             )
+            # When loading from a safe=False checkpoint, params[4] (behavior_qc_params)
+            # is None. Use _backup_qc as fallback so the pytree structure stays consistent
+            # (None vs dict mismatch breaks jax.lax.scan across training steps).
+            _behavior_qc = (
+                params[4] if (safe and params[4] is not None) else (_backup_qc if safe else None)
+            )
             training_state = training_state.replace(  # type: ignore
                 normalizer_params=ts_normalizer_params,
                 behavior_policy_params=params[1],
@@ -415,8 +421,8 @@ def train(
                 behavior_qr_params=params[3],
                 behavior_target_qr_params=params[3],
                 backup_qr_params=params[3],
-                behavior_qc_params=params[4] if safe else None,
-                behavior_target_qc_params=params[4] if safe else None,
+                behavior_qc_params=_behavior_qc,
+                behavior_target_qc_params=_behavior_qc,
                 backup_qc_params=_backup_qc,
                 backup_target_qc_params=_backup_qc,
             )
