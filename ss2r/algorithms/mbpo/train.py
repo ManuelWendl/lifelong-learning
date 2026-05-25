@@ -440,7 +440,7 @@ def train(
                     else params[8],
                     training_state.behavior_qr_optimizer_state,
                 )
-                if not safe:
+                if not safe or params[9] is None:
                     qc_optimizer_state = None
                 else:
                     qc_optimizer_state = restore_state(
