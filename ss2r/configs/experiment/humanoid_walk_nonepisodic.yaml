@@ -8,8 +8,6 @@ defaults:
 
 environment:
   task_name: NonEpisodicHumanoidWalk
-  task_params:
-    ground_start_probability: 1.
 
 
 training:
@@ -18,7 +16,7 @@ training:
   eval_domain_randomization: false
   safe: true
   wandb_id: mj4ywlmp
-  safety_budget: 25.
+  safety_budget: .95
 
 agent:
   activation: swish

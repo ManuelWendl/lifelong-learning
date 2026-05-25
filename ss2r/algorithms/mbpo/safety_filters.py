@@ -56,25 +56,26 @@ def make_nonepisodic_filter_fn(
                     logits, key_sample
                 )
             if mbpo_networks.qc_network is not None:
-                qc = mbpo_networks.qc_network.apply(
+                # qc = P(reach upright set A within H steps) in [0, 1]
+                recovery_prob = mbpo_networks.qc_network.apply(
                     normalizer_params, qc_params, observations, behavioral_action
                 ).mean(axis=-1)
             else:
                 raise ValueError("QC network is not defined, cannot do shielding.")
-            expected_total_cost = qc
             backup_action = backup_policy(observations, key_sample)[0]
-            safe = expected_total_cost[..., None] < safety_budget
+            # Intervene when recovery probability of the behavioral action is too low.
+            safe = recovery_prob[..., None] >= safety_budget
             safe_action = jnp.where(safe, behavioral_action, backup_action)
             extras = {
                 "intervention": 1 - safe[..., 0].astype(jnp.float32),
                 "policy_distance": jnp.linalg.norm(mode_a - safe_action, axis=-1),
                 "safety_gap": jnp.maximum(
-                    expected_total_cost - safety_budget,
-                    jnp.zeros_like(expected_total_cost),
+                    safety_budget - recovery_prob,
+                    jnp.zeros_like(recovery_prob),
                 ),
-                "cumulative_cost": qc,
-                "expected_total_cost": expected_total_cost,
-                "q_c": qc,
+                "cumulative_cost": recovery_prob,
+                "expected_total_cost": recovery_prob,
+                "q_c": recovery_prob,
                 "behavior_action": behavioral_action,
             }
             return safe_action, extras
