@@ -11,7 +11,7 @@ environment:
 
 
 training:
-  num_timesteps: 5000000
+  num_timesteps: 200000
   train_domain_randomization: false
   eval_domain_randomization: false
   safe: true
