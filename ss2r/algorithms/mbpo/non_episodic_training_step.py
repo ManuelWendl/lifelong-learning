@@ -248,6 +248,20 @@ def make_non_episodic_training_step(
             extra_fields=extra_fields,
         )
         transitions = jax.tree.map(lambda x: x.reshape(-1, *x.shape[2:]), transitions)
+        if override_actions:
+            # The planning policy is the raw behavior policy (no safety filter), so
+            # behavior_action == action. Patch policy_extras to match the replay
+            # buffer structure which expects the full nonepisodic filter fields.
+            n = transitions.action.shape[0]
+            transitions.extras["policy_extras"].update({
+                "behavior_action": transitions.action,
+                "intervention": jnp.zeros(n),
+                "policy_distance": jnp.zeros(n),
+                "safety_gap": jnp.zeros(n),
+                "cumulative_cost": jnp.zeros(n),
+                "expected_total_cost": jnp.zeros(n),
+                "q_c": jnp.zeros(n),
+            })
         sac_buffer_state = sac_replay_buffer.insert(
             sac_buffer_state, float16(transitions)
         )

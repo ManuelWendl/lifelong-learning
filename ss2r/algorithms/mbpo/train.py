@@ -339,10 +339,7 @@ def train(
         dummy_data_sample=dummy_transition,
         sample_batch_size=batch_size * model_grad_updates_per_step,
     )
-    if make_training_step_fn == make_non_episodic_training_step:
-        sample_batch_size = sac_batch_size
-    else:
-        sample_batch_size = sac_batch_size * critic_grad_updates_per_step
+    sample_batch_size = sac_batch_size * critic_grad_updates_per_step
     sac_replay_buffer = replay_buffers.UniformSamplingQueue(
         max_replay_size=max_replay_size,
         dummy_data_sample=dummy_transition,
