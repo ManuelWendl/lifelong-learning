@@ -250,10 +250,13 @@ def make_non_episodic_training_step(
         transitions = jax.tree.map(lambda x: x.reshape(-1, *x.shape[2:]), transitions)
         if override_actions:
             # The planning policy is the raw behavior policy (no safety filter), so
-            # behavior_action == action. Patch policy_extras to match the replay
-            # buffer structure which expects the full nonepisodic filter fields.
+            # behavior_action == action. Replace policy_extras entirely to match the
+            # replay buffer structure (initialized with dummy_transition that has the
+            # full nonepisodic filter fields). Keeping extra keys like log_prob would
+            # cause a pytree structure mismatch on insert, storing None for missing
+            # fields and later causing len(None) when scanning over transitions.
             n = transitions.action.shape[0]
-            transitions.extras["policy_extras"].update({
+            transitions.extras["policy_extras"] = {
                 "behavior_action": transitions.action,
                 "intervention": jnp.zeros(n),
                 "policy_distance": jnp.zeros(n),
@@ -261,7 +264,7 @@ def make_non_episodic_training_step(
                 "cumulative_cost": jnp.zeros(n),
                 "expected_total_cost": jnp.zeros(n),
                 "q_c": jnp.zeros(n),
-            })
+            }
         sac_buffer_state = sac_replay_buffer.insert(
             sac_buffer_state, float16(transitions)
         )
