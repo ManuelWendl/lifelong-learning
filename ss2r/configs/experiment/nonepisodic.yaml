@@ -1,5 +1,6 @@
 training:
   nonepisodic: true
-  
+  num_envs: 1
+
 agent:
   reset_on_eval: false

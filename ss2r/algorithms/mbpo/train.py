@@ -368,12 +368,19 @@ def train(
                 normalizer_params=ts_normalizer_params
             )
         elif learn_from_scratch:
+            # For the nonepisodic filter the Stage-2 checkpoint has no qc (safe=false),
+            # so we use qr (params[3]) which is P(reach A) as the backup safety value.
+            # For all other filters fall back to the saved qc (params[4]).
+            _backup_qc = (
+                params[3] if safety_filter == "nonepisodic"
+                else (params[10] if safe and len(params) > 10 else (params[4] if safe else None))
+            )
             training_state = training_state.replace(  # type: ignore
                 normalizer_params=ts_normalizer_params,
                 backup_policy_params=params[1],
                 backup_qr_params=params[3],
-                backup_qc_params=params[4] if safe else None,
-                backup_target_qc_params=params[4] if safe else None,
+                backup_qc_params=_backup_qc,
+                backup_target_qc_params=_backup_qc,
             )
         elif load_from_sbsrl:
             training_state = training_state.replace(  # type: ignore
@@ -396,6 +403,14 @@ def train(
                 ),
             )
         else:
+            # For the nonepisodic filter the Stage-2 checkpoint has no qc (safe=false),
+            # so we use qr (params[3]) which is P(reach A) as the backup safety value.
+            # For other filters prefer the explicitly saved backup_qc (params[10] if
+            # present) and fall back to the behavior qc (params[4]) for older checkpoints.
+            _backup_qc = (
+                params[3] if safety_filter == "nonepisodic"
+                else (params[10] if safe and len(params) > 10 else (params[4] if safe else None))
+            )
             training_state = training_state.replace(  # type: ignore
                 normalizer_params=ts_normalizer_params,
                 behavior_policy_params=params[1],
@@ -405,8 +420,8 @@ def train(
                 backup_qr_params=params[3],
                 behavior_qc_params=params[4] if safe else None,
                 behavior_target_qc_params=params[4] if safe else None,
-                backup_qc_params=params[4] if safe else None,
-                backup_target_qc_params=params[4] if safe else None,
+                backup_qc_params=_backup_qc,
+                backup_target_qc_params=_backup_qc,
             )
         if load_auxiliaries and not learn_from_scratch:
             policy_optimizer_state = restore_state(
@@ -563,8 +578,10 @@ def train(
     elif make_training_step_fn == make_non_episodic_training_step:
         training_step = make_training_step_fn(
             env,
+            make_planning_policy,
             make_rollout_policy,
             get_rollout_policy_params,
+            make_model_env,
             model_replay_buffer,
             sac_replay_buffer,
             alpha_update,
@@ -583,6 +600,11 @@ def train(
             env_steps_per_experience_call,
             tau,
             num_critic_updates_per_actor_update,
+            unroll_length,
+            num_model_rollouts,
+            optimism,
+            pessimism,
+            model_to_real_data_ratio,
             safety_budget,
             mbpo_network.qc_network,
             override_actions if safety_filter == "nonepisodic" else False,
@@ -785,6 +807,7 @@ def train(
                 training_state.alpha_optimizer_state,
                 training_state.behavior_qr_optimizer_state,
                 training_state.behavior_qc_optimizer_state,
+                training_state.backup_qc_params,  # [10] — separate from behavior_qc
             )
             if store_buffer:
                 params += (model_buffer_state,)
