@@ -466,8 +466,8 @@ def train(
                 behavior_policy_optimizer_state=policy_optimizer_state,
                 alpha_optimizer_state=alpha_optimizer_state,
                 behavior_qr_optimizer_state=qr_optimizer_state,
-                behavior_qc_optimizer_state=qc_optimizer_state,
-                backup_qc_optimizer_state=qc_optimizer_state,
+                behavior_qc_optimizer_state=qc_optimizer_state if qc_optimizer_state is not None else training_state.behavior_qc_optimizer_state,
+                backup_qc_optimizer_state=qc_optimizer_state if qc_optimizer_state is not None else training_state.backup_qc_optimizer_state,
                 alpha_params=params[5],
             )
     make_planning_policy = mbpo_networks.make_inference_fn(mbpo_network)
