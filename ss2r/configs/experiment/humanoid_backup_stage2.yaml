@@ -20,6 +20,8 @@ backup:
   states_wandb_run_id: zfsniq3a
 
 environment:
+  task_params:
+    simulator_states_path: ""
   train_params:
     friction: [-0.05, 0.05]
     gear_hip:
