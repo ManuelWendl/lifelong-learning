@@ -37,7 +37,7 @@ training:
   eval_domain_randomization: false
   store_checkpoint: true
   num_evals: 20
-  episode_length: 50
+  episode_length: 200
   wandb_id: ""  # don't load policy from Stage 1 — initialize fresh
 
 agent:
@@ -53,4 +53,4 @@ agent:
   # bound → next_v -= alpha*log_prob explodes with gamma=1.0.
   entropy_bonus: false
   propagation:
-    lambda_: .1
+    lambda_: .01
