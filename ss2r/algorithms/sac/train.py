@@ -443,17 +443,20 @@ def train(
             transitions = transitions._replace(
                 observation=observations, next_observation=next_observations
             )
-        alpha_loss, alpha_params, alpha_optimizer_state = alpha_update(
-            training_state.alpha_params,
-            training_state.policy_params,
-            training_state.normalizer_params,
-            transitions,
-            key_alpha,
-            optimizer_state=training_state.alpha_optimizer_state,
-        )
         if entropy_bonus:
+            alpha_loss, alpha_params, alpha_optimizer_state = alpha_update(
+                training_state.alpha_params,
+                training_state.policy_params,
+                training_state.normalizer_params,
+                transitions,
+                key_alpha,
+                optimizer_state=training_state.alpha_optimizer_state,
+            )
             alpha = jnp.exp(training_state.alpha_params) + min_alpha
         else:
+            alpha_loss = jnp.zeros(())
+            alpha_params = training_state.alpha_params
+            alpha_optimizer_state = training_state.alpha_optimizer_state
             alpha = 0.0
         critic_loss, qr_params, qr_optimizer_state = critic_update(
             training_state.qr_params,
