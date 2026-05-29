@@ -34,6 +34,10 @@ def default_config() -> config_dict.ConfigDict:
         # Set A thresholds: must satisfy BOTH conditions to terminate with reward 1.
         head_height_threshold=1.6,  # full standing head≈1.69m (torso 1.5+0.19); 1.4 only requires ~53% up
         torso_upright_threshold=0.95,  # z-projection of torso orientation (~18° max lean, was 0.9/~26°)
+        # Fraction of resets that sample from the fallen-state buffer (1.0 = always
+        # use buffer, 0.0 = always use the default standing initialisation).
+        ground_start_probability=1.0,
+        simulator_states_path="",
     )
 
 
@@ -59,31 +63,42 @@ class BackupHumanoidEnv(humanoid.Humanoid):
 
         self._head_height_threshold = float(config.head_height_threshold)
         self._torso_upright_threshold = float(config.torso_upright_threshold)
+        self._ground_start_probability = float(config.ground_start_probability)
 
-        # Load saved (qpos, qvel) pairs and pin them as JAX arrays so they can
-        # be indexed inside jit/vmap without retracing.
+        # Load saved (qpos, qvel) pairs only when buffer resets are needed.
         states_path = config.simulator_states_path
-        if not states_path:
-            raise ValueError(
-                "BackupHumanoidEnv requires 'simulator_states_path' in config. "
-                "Run Stage 1 first to collect and save simulator states."
-            )
-        qpos_np, qvel_np = load_simulator_states(states_path)
-        self._qpos_buffer = jp.asarray(qpos_np, dtype=jp.float32)  # (N, nq)
-        self._qvel_buffer = jp.asarray(qvel_np, dtype=jp.float32)  # (N, nv)
-        self._n_states = qpos_np.shape[0]
+        if self._ground_start_probability > 0.0:
+            if not states_path:
+                raise ValueError(
+                    "BackupHumanoidEnv requires 'simulator_states_path' in config "
+                    "when ground_start_probability > 0. Run Stage 1 first, or set "
+                    "ground_start_probability=0.0 to use the standing initialisation."
+                )
+            qpos_np, qvel_np = load_simulator_states(states_path)
+            self._qpos_buffer = jp.asarray(qpos_np, dtype=jp.float32)  # (N, nq)
+            self._qvel_buffer = jp.asarray(qvel_np, dtype=jp.float32)  # (N, nv)
+            self._n_states = qpos_np.shape[0]
 
     # ------------------------------------------------------------------
     # Overridden environment interface
     # ------------------------------------------------------------------
 
     def reset(self, rng: jax.Array) -> mjx_env.State:
-        rng, idx_key = jax.random.split(rng)
-        idx = jax.random.randint(idx_key, shape=(), minval=0, maxval=self._n_states)
-        qpos = self._qpos_buffer[idx]   # (nq,)
-        qvel = self._qvel_buffer[idx]   # (nv,)
+        rng, key_choice, idx_key = jax.random.split(rng, 3)
 
-        data = mjx_env.init(self.mjx_model, qpos=qpos, qvel=qvel)
+        def buffer_init(idx_key):
+            idx = jax.random.randint(idx_key, shape=(), minval=0, maxval=self._n_states)
+            return mjx_env.init(
+                self.mjx_model,
+                qpos=self._qpos_buffer[idx],
+                qvel=self._qvel_buffer[idx],
+            )
+
+        def standing_init(_):
+            return mjx_env.init(self.mjx_model)
+
+        use_buffer = jax.random.uniform(key_choice) < self._ground_start_probability
+        data = jax.lax.cond(use_buffer, buffer_init, standing_init, idx_key)
         info = {"rng": rng, "cost": jp.zeros(())}
         metrics = {
             "reward/in_upright_set": jp.zeros(()),
