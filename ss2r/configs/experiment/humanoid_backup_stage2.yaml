@@ -22,7 +22,7 @@ backup:
 environment:
   task_params:
     simulator_states_path: ""
-    ground_start_probability: 0.0  # 0.0 = always standing, 1.0 = always from buffer
+    ground_start_probability: 0.5  # 0.0 = always standing, 1.0 = always from buffer
   train_params:
     friction: [-0.05, 0.05]
     gear_hip:
