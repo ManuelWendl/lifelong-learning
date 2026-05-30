@@ -27,6 +27,7 @@ environment:
   task_params:
     simulator_states_path: ""
     ground_start_probability: 0.9  # 0.0 = always standing, 1.0 = always from buffer
+    dense_reward_scale: 1.0
   train_params:
     friction: [-0.05, 0.05]
     gear_hip:
