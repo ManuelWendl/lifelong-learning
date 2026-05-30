@@ -49,4 +49,4 @@ agent:
   # bound → next_v -= alpha*log_prob explodes with gamma=1.0.
   init_alpha: 1.0
   propagation:
-    lambda_: .1.
+    lambda_: 1.
