@@ -22,14 +22,14 @@ backup:
 environment:
   task_params:
     simulator_states_path: ""
-    ground_start_probability: 0.5  # 0.0 = always standing, 1.0 = always from buffer
+    ground_start_probability: 0.9  # 0.0 = always standing, 1.0 = always from buffer
   train_params:
     friction: [-0.05, 0.05]
     gear_hip:
       x: [-20., 20.]
       y: [-20., 20.]
       z: [-60., 60.]
-    gear_knee: [-40., 40.]
+    gear_knee: [-1., 1.]
 
 training:
   num_timesteps: 5000000
@@ -49,4 +49,4 @@ agent:
   # bound → next_v -= alpha*log_prob explodes with gamma=1.0.
   init_alpha: 1.0
   propagation:
-    lambda_: 1.
+    lambda_: 0.1
