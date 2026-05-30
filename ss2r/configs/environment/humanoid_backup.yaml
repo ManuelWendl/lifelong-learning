@@ -6,7 +6,7 @@ task_params:
   ctrl_dt: 0.025
   sim_dt: 0.005
   # Finite horizon H for backup policy. At ctrl_dt=0.025 s, 200 steps = 5 s.
-  episode_length: 200
+  episode_length: 500
   action_repeat: 1
   vision: false
   # Set A thresholds for the upright condition.

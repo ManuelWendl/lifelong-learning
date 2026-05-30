@@ -37,7 +37,7 @@ training:
   train_domain_randomization: true
   eval_domain_randomization: false
   store_checkpoint: true
-  episode_length: 200
+  episode_length: 500
   wandb_id: ""  # don't load policy from Stage 1 — initialize fresh
 
 agent:
