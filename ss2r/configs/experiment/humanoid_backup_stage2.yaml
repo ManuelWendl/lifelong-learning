@@ -37,21 +37,16 @@ training:
   train_domain_randomization: true
   eval_domain_randomization: false
   store_checkpoint: true
-  num_evals: 20
   episode_length: 200
   wandb_id: ""  # don't load policy from Stage 1 — initialize fresh
 
 agent:
   activation: swish
   discounting: 1.0
-  reward_scaling: 1.0
-  max_replay_size: 1000000
-  min_replay_size: 50000
-  num_critic_updates_per_actor_update: 20
   # Disable entropy regularisation: the loaded walk policy outputs concentrated
   # distributions for OOD fallen-state observations, causing log_prob >> 0.
   # alpha_loss = alpha*(-log_prob - target_entropy) < 0 → alpha grows without
   # bound → next_v -= alpha*log_prob explodes with gamma=1.0.
   init_alpha: 1.0
   propagation:
-    lambda_: .01
+    lambda_: .1.
