@@ -1,12 +1,16 @@
 # @package _global_
 # Stage 2: Train a backup (upright-recovery) policy with SPIDR pessimism.
 #
-# The environment initialises from the states saved by Stage 1.
-# Reward is sparse: 0 at every step, 1 on entering set A (upright) + termination.
-# With discounting=1.0, the optimal Q-function equals P(reach A within H steps).
+# Two Q-functions are learned simultaneously:
+#   Q_r (reward):  dense shaping reward = (head_h/thresh) * (torso_u/thresh)
+#                  → drives the actor to stand up via continuous gradient signal.
+#   Q_c (cost):    sparse indicator reward = 1 iff in set A, discounting=1
+#                  → converges to P(reach A within H steps), the theoretically
+#                     grounded backup value function used in Stage 3.
+#
+# safety_budget=0.0 so the constraint never blocks the actor during Stage 2.
 # SPIDR wraps the environment with domain randomization and subtracts a pessimism
-# penalty (lambda_ * std over perturbed models) from the Q-target, so the learned
-# Q* is a lower bound on recovery probability across the randomization distribution.
+# penalty (lambda_ * std over perturbed models) from both Q-targets.
 #
 # Run:  python train_brax.py +experiment=humanoid_backup_stage2
 defaults:
@@ -33,7 +37,8 @@ environment:
 
 training:
   num_timesteps: 5000000
-  safe: false
+  safe: true
+  safety_budget: 0.0  # no constraint on the actor — Q_c is learned purely for Stage 3
   train_domain_randomization: true
   eval_domain_randomization: false
   store_checkpoint: true
@@ -43,10 +48,7 @@ training:
 agent:
   activation: swish
   discounting: 1.0
-  # Disable entropy regularisation: the loaded walk policy outputs concentrated
-  # distributions for OOD fallen-state observations, causing log_prob >> 0.
-  # alpha_loss = alpha*(-log_prob - target_entropy) < 0 → alpha grows without
-  # bound → next_v -= alpha*log_prob explodes with gamma=1.0.
+  safety_discounting: 1.0  # Q_c with gamma=1 converges to P(reach A within H steps)
   init_alpha: 1.0
   propagation:
     lambda_: 0.1

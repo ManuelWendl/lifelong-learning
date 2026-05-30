@@ -38,6 +38,9 @@ def default_config() -> config_dict.ConfigDict:
         # use buffer, 0.0 = always use the default standing initialisation).
         ground_start_probability=1.0,
         simulator_states_path="",
+        # Scale for dense shaping reward (head-height * torso-upright progress).
+        # Set to 0.0 to use pure sparse indicator reward.
+        dense_reward_scale=1.0,
     )
 
 
@@ -64,6 +67,7 @@ class BackupHumanoidEnv(humanoid.Humanoid):
         self._head_height_threshold = float(config.head_height_threshold)
         self._torso_upright_threshold = float(config.torso_upright_threshold)
         self._ground_start_probability = float(config.ground_start_probability)
+        self._dense_reward_scale = float(config.dense_reward_scale)
 
         # Load saved (qpos, qvel) pairs only when buffer resets are needed.
         states_path = config.simulator_states_path
@@ -120,14 +124,21 @@ class BackupHumanoidEnv(humanoid.Humanoid):
             torso_u > self._torso_upright_threshold
         )
 
-        # Sparse reward: 1 iff in A (episode terminates immediately after).
-        reward = in_A.astype(jp.float32)
+        # Dense shaping: normalized progress toward set A.
+        head_progress = jp.clip(head_h / self._head_height_threshold, 0.0, 1.0)
+        torso_progress = jp.clip(torso_u / self._torso_upright_threshold, 0.0, 1.0)
+        dense_reward = self._dense_reward_scale * head_progress * torso_progress
+
+        # Reward: dense shaping (or 1.0 on entering A if scale=0).
+        reward = jp.where(in_A, 1.0, dense_reward)
 
         # Terminate on reaching A or on NaN (simulation instability).
         nans = jp.isnan(data.qpos).any() | jp.isnan(data.qvel).any()
         done = (in_A | nans).astype(jp.float32)
 
-        cost = jp.zeros(())
+        # Cost = indicator of set A membership: Q_c with safety_discounting=1
+        # converges to P(reach A within H steps), usable as backup value function.
+        cost = in_A.astype(jp.float32)
         metrics = {
             "reward/in_upright_set": in_A.astype(jp.float32),
             "reward": reward,
