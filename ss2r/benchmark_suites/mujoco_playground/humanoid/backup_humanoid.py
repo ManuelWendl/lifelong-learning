@@ -124,12 +124,13 @@ class BackupHumanoidEnv(humanoid.Humanoid):
             torso_u > self._torso_upright_threshold
         )
 
-        # Dense shaping: normalized progress toward set A.
-        head_progress = jp.clip(head_h / self._head_height_threshold, 0.0, 1.0)
-        torso_progress = jp.clip(torso_u / self._torso_upright_threshold, 0.0, 1.0)
-        dense_reward = self._dense_reward_scale * head_progress * torso_progress
+        # Dense reward: parent standing reward (standing * upright * dont_move *
+        # small_control). move_speed=0.0 in __init__ so dont_move replaces move.
+        dense_reward = self._dense_reward_scale * self._get_reward(
+            data, action, state.info, {}
+        )
 
-        # Reward: dense shaping (or 1.0 on entering A if scale=0).
+        # Reward: dense shaping (or 1.0 on entering A).
         reward = jp.where(in_A, 1.0, dense_reward)
 
         # Terminate on reaching A or on NaN (simulation instability).
