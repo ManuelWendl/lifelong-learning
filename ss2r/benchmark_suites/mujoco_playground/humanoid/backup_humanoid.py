@@ -120,9 +120,9 @@ class BackupHumanoidEnv(humanoid.Humanoid):
             torso_u > self._torso_upright_threshold
         )
 
-        # Reward: 0 on entering A (episode ends), -1 every other step.
-        # With discounting=1, Q*(s) = -E[steps to reach A from s].
-        reward = jp.where(in_A, 0.0, -1.0)
+        # Dense reward: parent standing reward (standing * upright * dont_move *
+        # small_control). move_speed=0.0 in __init__ so dont_move replaces move.
+        reward = self._get_reward(data, action, state.info, {})
 
         # Terminate on reaching A or on NaN (simulation instability).
         nans = jp.isnan(data.qpos).any() | jp.isnan(data.qvel).any()
