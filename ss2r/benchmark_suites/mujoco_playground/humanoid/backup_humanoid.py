@@ -38,9 +38,6 @@ def default_config() -> config_dict.ConfigDict:
         # use buffer, 0.0 = always use the default standing initialisation).
         ground_start_probability=1.0,
         simulator_states_path="",
-        # Scale for dense shaping reward (head-height * torso-upright progress).
-        # Set to 0.0 to use pure sparse indicator reward.
-        dense_reward_scale=1.0,
     )
 
 
@@ -67,7 +64,6 @@ class BackupHumanoidEnv(humanoid.Humanoid):
         self._head_height_threshold = float(config.head_height_threshold)
         self._torso_upright_threshold = float(config.torso_upright_threshold)
         self._ground_start_probability = float(config.ground_start_probability)
-        self._dense_reward_scale = float(config.dense_reward_scale)
 
         # Load saved (qpos, qvel) pairs only when buffer resets are needed.
         states_path = config.simulator_states_path
@@ -124,14 +120,9 @@ class BackupHumanoidEnv(humanoid.Humanoid):
             torso_u > self._torso_upright_threshold
         )
 
-        # Dense reward: parent standing reward (standing * upright * dont_move *
-        # small_control). move_speed=0.0 in __init__ so dont_move replaces move.
-        dense_reward = self._dense_reward_scale * self._get_reward(
-            data, action, state.info, {}
-        )
-
-        # Reward: dense shaping (or 1.0 on entering A).
-        reward = jp.where(in_A, 1.0, dense_reward)
+        # Reward: 0 on entering A (episode ends), -1 every other step.
+        # With discounting=1, Q*(s) = -E[steps to reach A from s].
+        reward = jp.where(in_A, 0.0, -1.0)
 
         # Terminate on reaching A or on NaN (simulation instability).
         nans = jp.isnan(data.qpos).any() | jp.isnan(data.qvel).any()

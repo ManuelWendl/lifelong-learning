@@ -2,11 +2,10 @@
 # Stage 2: Train a backup (upright-recovery) policy with SPIDR pessimism.
 #
 # Two Q-functions are learned simultaneously:
-#   Q_r (reward):  dense shaping reward = (head_h/thresh) * (torso_u/thresh)
-#                  → drives the actor to stand up via continuous gradient signal.
-#   Q_c (cost):    sparse indicator reward = 1 iff in set A, discounting=1
-#                  → converges to P(reach A within H steps), the theoretically
-#                     grounded backup value function used in Stage 3.
+#   Q_r (reward):  -1 every step, 0 on entering set A + termination.
+#                  With discounting=1, Q_r*(s) = -E[steps to reach A from s].
+#   Q_c (cost):    indicator 1 iff in set A, safety_discounting=1.
+#                  Q_c*(s) = P(reach A within H steps) — backup value for Stage 3.
 #
 # safety_budget=0.0 so the constraint never blocks the actor during Stage 2.
 # SPIDR wraps the environment with domain randomization and subtracts a pessimism
@@ -27,7 +26,6 @@ environment:
   task_params:
     simulator_states_path: ""
     ground_start_probability: 0.9  # 0.0 = always standing, 1.0 = always from buffer
-    dense_reward_scale: 1.0
   train_params:
     friction: [-0.05, 0.05]
     gear_hip:
