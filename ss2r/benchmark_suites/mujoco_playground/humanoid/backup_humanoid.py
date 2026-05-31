@@ -74,9 +74,14 @@ class BackupHumanoidEnv(humanoid.Humanoid):
                     "when ground_start_probability > 0. Run Stage 1 first, or set "
                     "ground_start_probability=0.0 to use the standing initialisation."
                 )
-            qpos_np, qvel_np = load_simulator_states(states_path)
+            qpos_np, _ = load_simulator_states(states_path)
             self._qpos_buffer = jp.asarray(qpos_np, dtype=jp.float32)  # (N, nq)
-            self._qvel_buffer = jp.asarray(qvel_np, dtype=jp.float32)  # (N, nv)
+            # Zero velocities: buffer states were captured mid-fall (vel_norm ≈ 44
+            # rad/s), which causes immediate NaN in the simulator. The policy should
+            # recover from fallen postures, not from mid-tumble dynamics.
+            self._qvel_buffer = jp.zeros(
+                (qpos_np.shape[0], self.mjx_model.nv), dtype=jp.float32
+            )
             self._n_states = qpos_np.shape[0]
 
     # ------------------------------------------------------------------
