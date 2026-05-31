@@ -125,9 +125,10 @@ class BackupHumanoidEnv(humanoid.Humanoid):
             torso_u > self._torso_upright_threshold
         )
 
-        # Dense reward: parent standing reward (standing * upright * dont_move *
-        # small_control). move_speed=0.0 in __init__ so dont_move replaces move.
-        reward = self._get_reward(data, action, state.info, {})
+        # Dense reward: normalised head height, non-zero even when fully on the
+        # ground (head ≈ 0.2 m → 0.12), giving a gradient toward standing from
+        # any fallen posture. Clips at 1 once in set A.
+        reward = jp.clip(head_h / self._head_height_threshold, 0.0, 1.0)
 
         # Terminate on reaching A or on NaN (simulation instability).
         nans = jp.isnan(data.qpos).any() | jp.isnan(data.qvel).any()
