@@ -125,10 +125,13 @@ class BackupHumanoidEnv(humanoid.Humanoid):
             torso_u > self._torso_upright_threshold
         )
 
-        # Dense reward: normalised head height, non-zero even when fully on the
-        # ground (head ≈ 0.2 m → 0.12), giving a gradient toward standing from
-        # any fallen posture. Clips at 1 once in set A.
-        reward = jp.clip(head_h / self._head_height_threshold, 0.0, 1.0)
+        # Progress reward: change in normalised head height this step.
+        # 65% of buffer states have head_h ≈ 0.18 m — absolute-height rewards
+        # are constant there (Q ≈ const → ∂Q/∂a ≈ 0). Progress reward varies
+        # per action even when lying flat, so the critic learns which actions
+        # raise vs. lower the head and the actor gradient is non-zero.
+        prev_head_h = self._head_height(state.data)
+        reward = (head_h - prev_head_h) / self._head_height_threshold
 
         # Terminate on reaching A or on NaN (simulation instability).
         nans = jp.isnan(data.qpos).any() | jp.isnan(data.qvel).any()
