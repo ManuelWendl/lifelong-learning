@@ -13,10 +13,13 @@ With discounting=1 in the SAC training config, the optimal Q-function satisfies
 which is exactly the probability-of-recovery value function.
 """
 
+import logging
 from typing import Any, Dict, Optional, Union
 
 import jax
 import jax.numpy as jp
+import mujoco
+import numpy as np
 from ml_collections import config_dict
 from mujoco_playground._src import mjx_env
 from mujoco_playground._src.dm_control_suite import humanoid
@@ -38,6 +41,12 @@ def default_config() -> config_dict.ConfigDict:
         # use buffer, 0.0 = always use the default standing initialisation).
         ground_start_probability=1.0,
         simulator_states_path="",
+        # Only keep buffer states where head height (computed at zero velocity)
+        # exceeds this threshold. 65% of the raw buffer has head_h < 0.3 m —
+        # fully-flat states from which recovery is impossible in 200 steps, so
+        # the Q-function is constant there and gives no actor gradient.
+        # Set to 0.0 to keep all states.
+        min_head_height_filter=0.8,
     )
 
 
@@ -64,6 +73,7 @@ class BackupHumanoidEnv(humanoid.Humanoid):
         self._head_height_threshold = float(config.head_height_threshold)
         self._torso_upright_threshold = float(config.torso_upright_threshold)
         self._ground_start_probability = float(config.ground_start_probability)
+        self._min_head_height_filter = float(config.min_head_height_filter)
 
         # Load saved (qpos, qvel) pairs only when buffer resets are needed.
         states_path = config.simulator_states_path
@@ -75,10 +85,30 @@ class BackupHumanoidEnv(humanoid.Humanoid):
                     "ground_start_probability=0.0 to use the standing initialisation."
                 )
             qpos_np, _ = load_simulator_states(states_path)
-            self._qpos_buffer = jp.asarray(qpos_np, dtype=jp.float32)  # (N, nq)
-            # Zero velocities: buffer states were captured mid-fall (vel_norm ≈ 44
-            # rad/s), which causes immediate NaN in the simulator. The policy should
-            # recover from fallen postures, not from mid-tumble dynamics.
+            # Filter to states from which recovery is plausible.
+            # Raw buffer: 65% have head_h < 0.3 m (humanoid fully flat, vel ≈ 44 rad/s).
+            # Those states provide no gradient because Q ≈ const there.
+            # We keep only states above min_head_height_filter.
+            if self._min_head_height_filter > 0.0:
+                mj = self.mj_model
+                md = mujoco.MjData(mj)
+                head_id = mj.body("head").id
+                head_heights = []
+                for qp in qpos_np:
+                    md.qpos[:] = qp
+                    md.qvel[:] = 0.0
+                    mujoco.mj_kinematics(mj, md)
+                    head_heights.append(float(md.xpos[head_id, 2]))
+                mask = np.array(head_heights) > self._min_head_height_filter
+                qpos_np = qpos_np[mask]
+                logging.getLogger(__name__).info(
+                    "BackupHumanoidEnv: kept %d / %d buffer states "
+                    "(head_h > %.2f m).",
+                    mask.sum(), len(mask), self._min_head_height_filter,
+                )
+            self._qpos_buffer = jp.asarray(qpos_np, dtype=jp.float32)
+            # Zero velocities: raw buffer states captured mid-fall (vel_norm ≈ 44
+            # rad/s) cause simulation instability.
             self._qvel_buffer = jp.zeros(
                 (qpos_np.shape[0], self.mjx_model.nv), dtype=jp.float32
             )
@@ -125,13 +155,10 @@ class BackupHumanoidEnv(humanoid.Humanoid):
             torso_u > self._torso_upright_threshold
         )
 
-        # Progress reward: change in normalised head height this step.
-        # 65% of buffer states have head_h ≈ 0.18 m — absolute-height rewards
-        # are constant there (Q ≈ const → ∂Q/∂a ≈ 0). Progress reward varies
-        # per action even when lying flat, so the critic learns which actions
-        # raise vs. lower the head and the actor gradient is non-zero.
-        prev_head_h = self._head_height(state.data)
-        reward = (head_h - prev_head_h) / self._head_height_threshold
+        # Dense reward: normalised head height. With buffer filtered to
+        # head_h > min_head_height_filter, states span [0.8, 1.69] m so the
+        # reward varies meaningfully and the actor gradient is non-zero.
+        reward = jp.clip(head_h / self._head_height_threshold, 0.0, 1.0)
 
         # Terminate on reaching A or on NaN (simulation instability).
         nans = jp.isnan(data.qpos).any() | jp.isnan(data.qvel).any()
