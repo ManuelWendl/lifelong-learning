@@ -7,7 +7,7 @@
 #   Q_c (cost):    indicator 1 iff in set A, safety_discounting=1.
 #                  Q_c*(s) = P(reach A within H steps) — backup value for Stage 3.
 #
-# safety_budget=0.0 so the constraint never blocks the actor during Stage 2.
+# safety_budget=1.0 keeps CRPO in "reward mode" (constraint=1-Q_c >= 0 always since Q_c in [0,1]).
 # SPIDR wraps the environment with domain randomization and subtracts a pessimism
 # penalty (lambda_ * std over perturbed models) from both Q-targets.
 #
@@ -38,7 +38,7 @@ environment:
 training:
   num_timesteps: 5000000
   safe: true
-  safety_budget: 0.0  # no constraint on the actor — Q_c is learned purely for Stage 3
+  safety_budget: 1.0  # Q_c in [0,1] so constraint=1-Q_c >= 0 always; CRPO stays in reward mode
   train_domain_randomization: true
   eval_domain_randomization: false
   store_checkpoint: true
