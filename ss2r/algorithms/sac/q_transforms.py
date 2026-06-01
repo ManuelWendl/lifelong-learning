@@ -277,6 +277,35 @@ class SACCost(QTransformation):
         return target_q
 
 
+class LCBCost(QTransformation):
+    """Pessimistic cost Q-transform: subtracts disagreement from the cost target.
+
+    Produces a lower-confidence-bound on Q_c. When cost = P(reach A), this
+    gives a conservative underestimate of recovery probability in uncertain
+    regions — safe to use as a backup value for Stage 3.
+    """
+
+    def __call__(
+        self,
+        transitions: Transition,
+        q_fn: Callable[[Params, jax.Array], jax.Array],
+        policy: Callable[[jax.Array], tuple[jax.Array, jax.Array]],
+        gamma: float,
+        alpha: jax.Array | None = None,
+        scale: float = 1.0,
+        key: jax.Array | None = None,
+    ):
+        next_action, _ = policy(transitions.next_observation)
+        next_q = q_fn(transitions.next_observation, next_action)
+        next_v = next_q.mean(axis=-1)
+        disagreement = transitions.extras["state_extras"]["disagreement"]
+        cost = transitions.extras["state_extras"]["cost"] - disagreement
+        target_q = jax.lax.stop_gradient(
+            cost * scale + transitions.discount * gamma * next_v
+        )
+        return target_q
+
+
 def get_cost_q_transform(cfg):
     if (
         "cost_robustness" not in cfg.agent
@@ -289,6 +318,8 @@ def get_cost_q_transform(cfg):
         robustness = RAMU(**cfg.agent.cost_robustness)
     elif cfg.agent.cost_robustness.name == "ucb_cost":
         robustness = UCBCost()
+    elif cfg.agent.cost_robustness.name == "lcb_cost":
+        robustness = LCBCost()
     elif cfg.agent.cost_robustness.name == "pessimistic_cost_update":
         robustness = PessimisticCostUpdate()
     else:

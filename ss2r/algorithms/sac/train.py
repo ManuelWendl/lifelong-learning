@@ -41,7 +41,13 @@ from ss2r.algorithms.penalizers import Penalizer
 from ss2r.algorithms.sac import gradients
 from ss2r.algorithms.sac.data import collect_single_step
 from ss2r.algorithms.sac.pytree_uniform_sampling_queue import PytreeReplayBufferState
-from ss2r.algorithms.sac.q_transforms import QTransformation, SACBase, SACCost, UCBCost
+from ss2r.algorithms.sac.q_transforms import (
+    LCBCost,
+    QTransformation,
+    SACBase,
+    SACCost,
+    UCBCost,
+)
 from ss2r.algorithms.sac.rae import RAEReplayBufferState
 from ss2r.algorithms.sac.types import (
     CollectDataFn,
@@ -421,7 +427,7 @@ def train(
     extra_fields = ("truncation",)
     if safe:
         extra_fields += ("cost",)  # type: ignore
-    if isinstance(cost_q_transform, UCBCost):
+    if isinstance(cost_q_transform, (UCBCost, LCBCost)):
         extra_fields += ("disagreement",)  # type: ignore
 
     def sgd_step(

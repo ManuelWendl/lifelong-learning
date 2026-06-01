@@ -16,6 +16,7 @@ defaults:
   - mujoco_playground_dm_control
   - override /environment: humanoid_backup
   - override /agent/propagation: spidr
+  - override /agent/cost_robustness: lcb_cost
   - _self_
 
 backup:
