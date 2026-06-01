@@ -155,10 +155,12 @@ class BackupHumanoidEnv(humanoid.Humanoid):
             torso_u > self._torso_upright_threshold
         )
 
-        # Dense reward: normalised head height. With buffer filtered to
-        # head_h > min_head_height_filter, states span [0.8, 1.69] m so the
-        # reward varies meaningfully and the actor gradient is non-zero.
-        reward = jp.clip(head_h / self._head_height_threshold, 0.0, 1.0)
+        # Dense reward: product of normalised head height and torso uprightness,
+        # so both set-A conditions receive a gradient signal simultaneously.
+        # At set A (head_h >= threshold AND torso_u >= threshold) reward = 1.0.
+        head_component = jp.clip(head_h / self._head_height_threshold, 0.0, 1.0)
+        torso_component = jp.clip(torso_u / self._torso_upright_threshold, 0.0, 1.0)
+        reward = head_component * torso_component
 
         # Terminate on reaching A or on NaN (simulation instability).
         nans = jp.isnan(data.qpos).any() | jp.isnan(data.qvel).any()
