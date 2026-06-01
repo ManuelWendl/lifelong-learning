@@ -26,7 +26,7 @@ environment:
   task_params:
     simulator_states_path: ""
     ground_start_probability: 0.9  # 0.0 = always standing, 1.0 = always from buffer
-    min_head_height_filter: 0.8  # drop fully-flat states (head_h < 0.8 m = ~88% of raw buffer)
+    min_head_height_filter: 0.0  # keep all buffer states
   train_params:
     friction: [-0.05, 0.05]
     gear_hip:
