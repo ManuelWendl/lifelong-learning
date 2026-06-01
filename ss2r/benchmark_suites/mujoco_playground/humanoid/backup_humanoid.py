@@ -155,12 +155,13 @@ class BackupHumanoidEnv(humanoid.Humanoid):
             torso_u > self._torso_upright_threshold
         )
 
-        # Dense reward: product of normalised head height and torso uprightness,
-        # so both set-A conditions receive a gradient signal simultaneously.
-        # At set A (head_h >= threshold AND torso_u >= threshold) reward = 1.0.
+        # Dense shaping: product of normalised head height and torso uprightness.
+        # Terminal bonus of 100 added on reaching set A — larger than the maximum
+        # possible discounted shaping sum (~86 with gamma=0.99 over 200 steps),
+        # so the policy always prefers reaching A over hovering just below the threshold.
         head_component = jp.clip(head_h / self._head_height_threshold, 0.0, 1.0)
         torso_component = jp.clip(torso_u / self._torso_upright_threshold, 0.0, 1.0)
-        reward = head_component * torso_component
+        reward = head_component * torso_component + in_A.astype(jp.float32) * 100.0
 
         # Terminate on reaching A or on NaN (simulation instability).
         nans = jp.isnan(data.qpos).any() | jp.isnan(data.qvel).any()
