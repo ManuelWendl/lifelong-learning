@@ -309,7 +309,7 @@ def train(
     }
     if safe:
         extras["state_extras"]["cost"] = jnp.zeros(())  # type: ignore
-    if isinstance(cost_q_transform, UCBCost):
+    if isinstance(cost_q_transform, (UCBCost, LCBCost)):
         extras["state_extras"]["disagreement"] = jnp.zeros(())  # type: ignore
     dummy_transition = Transition(  # pytype: disable=wrong-arg-types  # jax-ndarray
         observation=dummy_obs,
