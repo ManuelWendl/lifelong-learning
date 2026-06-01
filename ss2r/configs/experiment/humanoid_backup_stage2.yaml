@@ -38,7 +38,7 @@ environment:
 training:
   num_timesteps: 5000000
   safe: true
-  safety_budget: 1.0  # Q_c in [0,1] so constraint=1-Q_c >= 0 always; CRPO stays in reward mode
+  safety_budget: 999999999  # Q_c in [0,1] so constraint=1-Q_c >= 0 always; CRPO stays in reward mode
   train_domain_randomization: true
   eval_domain_randomization: false
   store_checkpoint: true
