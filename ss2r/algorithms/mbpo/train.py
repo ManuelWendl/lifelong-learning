@@ -365,12 +365,13 @@ def train(
                 normalizer_params=ts_normalizer_params
             )
         elif learn_from_scratch:
-            # For the nonepisodic filter the Stage-2 checkpoint has no qc (safe=false),
-            # so we use qr (params[3]) which is P(reach A) as the backup safety value.
-            # For all other filters fall back to the saved qc (params[4]).
+            # If Stage-2 was trained with safe=True, params[4] is the trained Q_c
+            # (P(reach A) with safety_discounting=1). Use it directly.
+            # Fall back to params[3] (Q_r) only for old safe=False Stage-2 checkpoints.
             _backup_qc = (
-                params[3] if safety_filter == "nonepisodic"
-                else (params[10] if safe and len(params) > 10 else (params[4] if safe else None))
+                params[4] if (params[4] is not None)
+                else params[3] if safety_filter == "nonepisodic"
+                else (params[10] if safe and len(params) > 10 else None)
             )
             training_state = training_state.replace(  # type: ignore
                 normalizer_params=ts_normalizer_params,
@@ -400,13 +401,13 @@ def train(
                 ),
             )
         else:
-            # For the nonepisodic filter the Stage-2 checkpoint has no qc (safe=false),
-            # so we use qr (params[3]) which is P(reach A) as the backup safety value.
-            # For other filters prefer the explicitly saved backup_qc (params[10] if
-            # present) and fall back to the behavior qc (params[4]) for older checkpoints.
+            # If Stage-2 was trained with safe=True, params[4] is the trained Q_c
+            # (P(reach A) with safety_discounting=1). Use it directly.
+            # Fall back to params[3] (Q_r) only for old safe=False Stage-2 checkpoints.
             _backup_qc = (
-                params[3] if safety_filter == "nonepisodic"
-                else (params[10] if safe and len(params) > 10 else (params[4] if safe else None))
+                params[4] if (params[4] is not None)
+                else params[3] if safety_filter == "nonepisodic"
+                else (params[10] if safe and len(params) > 10 else None)
             )
             # When loading from a safe=False checkpoint, params[4] (behavior_qc_params)
             # is None. Use _backup_qc as fallback so the pytree structure stays consistent
