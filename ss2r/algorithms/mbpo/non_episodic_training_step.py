@@ -270,6 +270,24 @@ def make_non_episodic_training_step(
         )
         return sac_buffer_state
 
+    def relabel_intervention_transitions(transitions: Transition) -> Transition:
+        """Terminate and zero the reward wherever the backup policy intervened.
+
+        Analogous to SOOPER relabeling: from the behavior policy's perspective,
+        any step where it lost control to the backup is a terminal failure.
+        discount=0 stops bootstrapping through the intervention boundary;
+        reward=0 provides a lower bound signal (no reward for unsafe states).
+        Model rollouts always have intervention=0, so they are unaffected.
+        """
+        intervention = transitions.extras["policy_extras"].get(
+            "intervention", jnp.zeros_like(transitions.reward)
+        )
+        intervened = intervention > 0.5
+        return transitions._replace(
+            reward=jnp.where(intervened, jnp.zeros_like(transitions.reward), transitions.reward),
+            discount=jnp.where(intervened, jnp.zeros_like(transitions.discount), transitions.discount),
+        )
+
     def relabel_transitions(
         planning_env: ModelBasedEnv,
         transitions: Transition,
@@ -358,6 +376,7 @@ def make_non_episodic_training_step(
             lambda x: jnp.reshape(x, (critic_grad_updates_per_step, -1) + x.shape[1:]),
             transitions,
         )
+        transitions = relabel_intervention_transitions(transitions)
         transitions, more_metrics = relabel_transitions(planning_env, transitions)
         (training_state, _), critic_metrics = jax.lax.scan(
             critic_sgd_step, (training_state, training_key), transitions
